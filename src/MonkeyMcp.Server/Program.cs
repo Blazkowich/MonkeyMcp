@@ -13,7 +13,7 @@ builder.Logging.AddConsole(options =>
     options.LogToStandardErrorThreshold = LogLevel.Trace;
 });
 
-builder.Services.AddMonkeyServices(builder.Configuration);
+builder.Services.AddMonkeyServices();
 
 builder.Services
     .AddMcpServer()

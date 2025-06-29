@@ -1,31 +1,23 @@
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MonkeyMcp.Core.Configuration;
 using MonkeyMcp.Core.Exceptions;
 using MonkeyMcp.Core.Models;
 
 namespace MonkeyMcp.Core.Services;
 
-public sealed class MonkeyService : IMonkeyService
+public sealed class MonkeyService(
+    HttpClient httpClient,
+    ILogger<MonkeyService> logger,
+    IOptions<MonkeyServiceOptions> options) : IMonkeyService
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<MonkeyService> _logger;
-    private readonly MonkeyServiceOptions _options;
+    private readonly HttpClient _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+    private readonly ILogger<MonkeyService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly MonkeyServiceOptions _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
     
     private List<Monkey>? _cachedMonkeys;
     private DateTime _lastCacheUpdate = DateTime.MinValue;
-
-    public MonkeyService(
-        HttpClient httpClient,
-        ILogger<MonkeyService> logger,
-        IOptions<MonkeyServiceOptions> options)
-    {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-    }
 
     public async Task<IReadOnlyList<Monkey>> GetMonkeysAsync(CancellationToken cancellationToken = default)
     {
@@ -78,6 +70,11 @@ public sealed class MonkeyService : IMonkeyService
         {
             _logger.LogInformation("Loading monkeys from API: {ApiUrl}", _options.ApiUrl);
             
+            if (string.IsNullOrEmpty(_options.ApiUrl))
+            {
+                throw new ArgumentException("ApiUrl must be configured in MonkeyServiceOptions");
+            }
+
             var response = await _httpClient.GetAsync(_options.ApiUrl, cancellationToken);
             response.EnsureSuccessStatusCode();
 
